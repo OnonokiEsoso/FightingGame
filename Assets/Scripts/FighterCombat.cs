@@ -20,6 +20,7 @@ public class FighterCombat : MonoBehaviour
     [Min(1)] public float MaxChargeDamageMultiplier = 3;
     public HitBox HitBox;
     [SerializeField] Animator quickPunchAnimator;
+    [SerializeField] Animator kickAnimator;
     public bool Busy { get; private set; }
     public bool Charging { get; private set; }
     public float ChargeFraction => Mathf.Clamp01(chargeTime / FrameTiming.Seconds(Mathf.Max(1, MaxChargeFrames)));
@@ -27,19 +28,26 @@ public class FighterCombat : MonoBehaviour
     float chargeTime;
 
     static readonly int QuickPunchTrigger = Animator.StringToHash("QuickPunch_1");
+    static readonly int KickTrigger = Animator.StringToHash("Kick_1");
 
     void Awake()
     {
         fighter = GetComponent<FighterController>();
 
-        // Prefer an explicitly assigned Animator, then look for the visual arm pivot used by the scene character.
+        // Prefer explicitly assigned Animators, then look for the scene character's visual pivots.
         if (!quickPunchAnimator)
         {
             Transform armPivot = transform.Find("Visual Root/Facing Pivot/FrontArmPivot");
             if (armPivot) quickPunchAnimator = armPivot.GetComponent<Animator>();
         }
 
-        // Fallback while there is only one limb Animator on the fighter.
+        if (!kickAnimator)
+        {
+            Transform legPivot = transform.Find("Visual Root/Facing Pivot/FrontLegPivot");
+            if (legPivot) kickAnimator = legPivot.GetComponent<Animator>();
+        }
+
+        // Fallback kept only for the existing weak-punch setup.
         if (!quickPunchAnimator)
             quickPunchAnimator = GetComponentInChildren<Animator>(true);
     }
@@ -87,6 +95,9 @@ public class FighterCombat : MonoBehaviour
         if (attack == QuickPunch && quickPunchAnimator)
             quickPunchAnimator.SetTrigger(QuickPunchTrigger);
 
+        if (attack == Kick && kickAnimator)
+            kickAnimator.SetTrigger(KickTrigger);
+
         StartCoroutine(Attack(attack, attack.Damage));
         return true;
     }
@@ -124,6 +135,7 @@ public class FighterCombat : MonoBehaviour
         if (HitBox) HitBox.End();
         if (fighter) fighter.EndAttackStep();
         if (quickPunchAnimator) quickPunchAnimator.ResetTrigger(QuickPunchTrigger);
+        if (kickAnimator) kickAnimator.ResetTrigger(KickTrigger);
         Phase = AttackPhase.None;
         Busy = Charging = false; chargeTime = 0;
         IsAirAttack = false;
