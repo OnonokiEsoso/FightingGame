@@ -19,13 +19,32 @@ public class FighterCombat : MonoBehaviour
     [Min(1)] public int MaxChargeFrames = 90;
     [Min(1)] public float MaxChargeDamageMultiplier = 3;
     public HitBox HitBox;
+    [SerializeField] Animator quickPunchAnimator;
     public bool Busy { get; private set; }
     public bool Charging { get; private set; }
     public float ChargeFraction => Mathf.Clamp01(chargeTime / FrameTiming.Seconds(Mathf.Max(1, MaxChargeFrames)));
     FighterController fighter;
     float chargeTime;
 
-    void Awake() => fighter = GetComponent<FighterController>();
+    static readonly int QuickPunchTrigger = Animator.StringToHash("QuickPunch");
+
+    void Awake()
+    {
+        fighter = GetComponent<FighterController>();
+
+        // The current humanoid visual keeps the arm Animator under this visual-only pivot.
+        // Keep the Inspector field available so the reference can be replaced later without code changes.
+        if (!quickPunchAnimator)
+        {
+            Transform armPivot = transform.Find("Visual Root/Facing Pivot/FrontArmPivot");
+            if (armPivot) quickPunchAnimator = armPivot.GetComponent<Animator>();
+        }
+
+        // Fallback for older/newer prefab layouts while there is only one limb Animator.
+        if (!quickPunchAnimator)
+            quickPunchAnimator = GetComponentInChildren<Animator>(true);
+    }
+
     void Update()
     {
         if (HitStop.IsActive) return;
@@ -65,6 +84,10 @@ public class FighterCombat : MonoBehaviour
         IsAirAttack = aerial;
         IsCrouchAttack = crouch;
         if (aerial) AirAttackUsed = true;
+
+        if (attack == QuickPunch && quickPunchAnimator)
+            quickPunchAnimator.SetTrigger(QuickPunchTrigger);
+
         StartCoroutine(Attack(attack, attack.Damage));
         return true;
     }
@@ -101,6 +124,7 @@ public class FighterCombat : MonoBehaviour
         StopAllCoroutines();
         if (HitBox) HitBox.End();
         if (fighter) fighter.EndAttackStep();
+        if (quickPunchAnimator) quickPunchAnimator.ResetTrigger(QuickPunchTrigger);
         Phase = AttackPhase.None;
         Busy = Charging = false; chargeTime = 0;
         IsAirAttack = false;
