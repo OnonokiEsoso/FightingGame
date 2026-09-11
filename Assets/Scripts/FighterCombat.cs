@@ -26,21 +26,20 @@ public class FighterCombat : MonoBehaviour
     FighterController fighter;
     float chargeTime;
 
-    static readonly int QuickPunchTrigger = Animator.StringToHash("QuickPunch");
+    static readonly int QuickPunchTrigger = Animator.StringToHash("QuickPunch_1");
 
     void Awake()
     {
         fighter = GetComponent<FighterController>();
 
-        // The current humanoid visual keeps the arm Animator under this visual-only pivot.
-        // Keep the Inspector field available so the reference can be replaced later without code changes.
+        // Prefer an explicitly assigned Animator, then look for the visual arm pivot used by the scene character.
         if (!quickPunchAnimator)
         {
             Transform armPivot = transform.Find("Visual Root/Facing Pivot/FrontArmPivot");
             if (armPivot) quickPunchAnimator = armPivot.GetComponent<Animator>();
         }
 
-        // Fallback for older/newer prefab layouts while there is only one limb Animator.
+        // Fallback while there is only one limb Animator on the fighter.
         if (!quickPunchAnimator)
             quickPunchAnimator = GetComponentInChildren<Animator>(true);
     }
