@@ -7,7 +7,7 @@
 [Uu]ser[Ss]ettings/
 
 .vs/
-.idea/
+.idea/git add .
 
 *.csproj
 *.sln
