@@ -19,8 +19,7 @@ public class FighterCombat : MonoBehaviour
     [Min(1)] public int MaxChargeFrames = 90;
     [Min(1)] public float MaxChargeDamageMultiplier = 3;
     public HitBox HitBox;
-    [SerializeField] Animator quickPunchAnimator;
-    [SerializeField] Animator kickAnimator;
+    [SerializeField] Animator visualAnimator;
     public bool Busy { get; private set; }
     public bool Charging { get; private set; }
     public float ChargeFraction => Mathf.Clamp01(chargeTime / FrameTiming.Seconds(Mathf.Max(1, MaxChargeFrames)));
@@ -35,22 +34,16 @@ public class FighterCombat : MonoBehaviour
     {
         fighter = GetComponent<FighterController>();
 
-        // Prefer explicitly assigned Animators, then look for the scene character's visual pivots.
-        if (!quickPunchAnimator)
+        // All current attack animations are now managed by one Animator on Facing Pivot.
+        if (!visualAnimator)
         {
-            Transform armPivot = transform.Find("Visual Root/Facing Pivot/FrontArmPivot");
-            if (armPivot) quickPunchAnimator = armPivot.GetComponent<Animator>();
+            Transform facingPivot = transform.Find("Visual Root/Facing Pivot");
+            if (facingPivot) visualAnimator = facingPivot.GetComponent<Animator>();
         }
 
-        if (!kickAnimator)
-        {
-            Transform legPivot = transform.Find("Visual Root/Facing Pivot/FrontLegPivot");
-            if (legPivot) kickAnimator = legPivot.GetComponent<Animator>();
-        }
-
-        // Fallback kept only for the existing arm animation setup.
-        if (!quickPunchAnimator)
-            quickPunchAnimator = GetComponentInChildren<Animator>(true);
+        // Fallback in case the hierarchy changes later.
+        if (!visualAnimator)
+            visualAnimator = GetComponentInChildren<Animator>(true);
     }
 
     void Update()
@@ -93,14 +86,12 @@ public class FighterCombat : MonoBehaviour
         IsCrouchAttack = crouch;
         if (aerial) AirAttackUsed = true;
 
-        if (attack == QuickPunch && quickPunchAnimator)
-            quickPunchAnimator.SetTrigger(QuickPunchTrigger);
-
-        if (attack == Punch && quickPunchAnimator)
-            quickPunchAnimator.SetTrigger(PunchTrigger);
-
-        if (attack == Kick && kickAnimator)
-            kickAnimator.SetTrigger(KickTrigger);
+        if (visualAnimator)
+        {
+            if (attack == QuickPunch) visualAnimator.SetTrigger(QuickPunchTrigger);
+            else if (attack == Punch) visualAnimator.SetTrigger(PunchTrigger);
+            else if (attack == Kick) visualAnimator.SetTrigger(KickTrigger);
+        }
 
         StartCoroutine(Attack(attack, attack.Damage));
         return true;
@@ -138,12 +129,12 @@ public class FighterCombat : MonoBehaviour
         StopAllCoroutines();
         if (HitBox) HitBox.End();
         if (fighter) fighter.EndAttackStep();
-        if (quickPunchAnimator)
+        if (visualAnimator)
         {
-            quickPunchAnimator.ResetTrigger(QuickPunchTrigger);
-            quickPunchAnimator.ResetTrigger(PunchTrigger);
+            visualAnimator.ResetTrigger(QuickPunchTrigger);
+            visualAnimator.ResetTrigger(PunchTrigger);
+            visualAnimator.ResetTrigger(KickTrigger);
         }
-        if (kickAnimator) kickAnimator.ResetTrigger(KickTrigger);
         Phase = AttackPhase.None;
         Busy = Charging = false; chargeTime = 0;
         IsAirAttack = false;
